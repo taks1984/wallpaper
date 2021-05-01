@@ -13,7 +13,7 @@
               <v-expansion-panel-header>Canvas Settings</v-expansion-panel-header>
               <v-expansion-panel-content>
                 <v-row>
-                  <v-col cols="6">
+                  <v-col cols="4">
                     <v-text-field
                       type="number"
                       v-model="canvas.width"
@@ -21,13 +21,21 @@
                       @change="drawImages"
                     ></v-text-field>
                   </v-col>
-                  <v-col cols="6">
+                  <v-col cols="4">
                     <v-text-field
                       type="number"
                       v-model="canvas.height"
                       label="Height (under 2048px)"
                       @change="drawImages"
                     ></v-text-field>
+                  </v-col>
+                  <v-col cols="4">
+                    <v-select
+                      v-model="canvas.background"
+                      :items="['Wood','Transparent']"
+                      label="Background"
+                      @change="drawImages"
+                    ></v-select>
                   </v-col>
                 </v-row>
               </v-expansion-panel-content>
@@ -37,7 +45,7 @@
               v-for="(image, index) in images"
               :key="index"
             >
-              <v-expansion-panel-header>Image #{{ index + 1 }}</v-expansion-panel-header>
+              <v-expansion-panel-header>Image #{{ index + 1 }}<span v-if="image.filename" class="ml-4">{{image.filename}}</span></v-expansion-panel-header>
               <v-expansion-panel-content>
                 <v-row dense>
                   <v-col cols="8">
@@ -105,6 +113,34 @@
                       @change="drawImages"
                     ></v-text-field>
                   </v-col>
+                  <v-col cols="4">
+                    <v-text-field
+                      type="number"
+                      v-model.number="images[index].borderWidth"
+                      label="Border Width"
+                      dense
+                      :disabled="images[index].transparent"
+                      @change="drawImages"
+                    ></v-text-field>
+                  </v-col>
+                </v-row>
+                <v-row dense>
+                  <v-col cols="4">
+                    <v-checkbox
+                      v-model="images[index].shadow"
+                      label="Shadow"
+                      dense
+                      hide-details
+                      @change="drawImages"
+                    ></v-checkbox>
+                    <v-checkbox
+                      v-model="images[index].transparent"
+                      label="Transparent"
+                      dense
+                      hide-details
+                      @change="drawImages"
+                    ></v-checkbox>
+                  </v-col>
                 </v-row>
               </v-expansion-panel-content>
             </v-expansion-panel>
@@ -135,6 +171,7 @@ export default {
     canvas: {
       width: 1920,
       height: 1080,
+      background: "Wood",
     },
     images: [
       {
@@ -145,6 +182,8 @@ export default {
         rotate: 0,
         depth: 0,
         borderWidth: 40,
+        transparent: false,
+        shadow: true,
       },
       {
         src: "",
@@ -154,6 +193,8 @@ export default {
         rotate: 0,
         depth: 0,
         borderWidth: 40,
+        transparent: false,
+        shadow: true,
       },
       {
         src: "",
@@ -163,6 +204,8 @@ export default {
         rotate: 0,
         depth: 0,
         borderWidth: 40,
+        transparent: false,
+        shadow: true,
       },
     ],
   }),
@@ -188,6 +231,8 @@ export default {
         rotate: 0,
         depth: 0,
         borderWidth: 40,
+        transparent: false,
+        shadow: true,
       });
     },
     drawImages: async function () {
@@ -202,13 +247,15 @@ export default {
 
         (async () => {
           // 背景を描画
-          await this.drawImage(context, {
-            src: "./images/wood-texture_00005.jpg",
-            left: 0,
-            top: 0,
-            scale: 1,
-            borderWidth: 0,
-          });
+          if (this.canvas.background === "Wood") {
+            await this.drawImage(context, {
+              src: "./images/wood-texture_00005.jpg",
+              left: 0,
+              top: 0,
+              scale: 1,
+              borderWidth: 0,
+            });
+          }
 
           // 全ての画像を描画
           const images = [...this.images];
@@ -245,20 +292,22 @@ export default {
             ctx.translate(left + width / 2, top + height / 2);
             ctx.rotate((config.rotate * Math.PI) / 180);
             ctx.translate(-(left + width / 2), -(top + height / 2));
-
-            // 枠線を描画
             ctx.fillStyle = borderColor;
             ctx.shadowColor = "#000";
-            ctx.shadowBlur = 10;
-            ctx.fillRect(
-              left,
-              top,
-              width + config.borderWidth * 2,
-              height + config.borderWidth * 2
-            );
+
+            if (!config.transparent) {
+              // 枠線を描画
+              ctx.shadowBlur = config.shadow ? 10 : 0;
+              ctx.fillRect(
+                left,
+                top,
+                width + config.borderWidth * 2,
+                height + config.borderWidth * 2
+              );
+            }
 
             // 画像を描画
-            ctx.shadowBlur = 0;
+            ctx.shadowBlur = config.shadow && config.transparent ? 10 : 0;
             ctx.drawImage(
               image,
               left + config.borderWidth,
@@ -283,13 +332,14 @@ export default {
         }
         const fr = new FileReader();
         fr.addEventListener("load", () => {
+          this.images[target].filename = file.name;
           this.images[target].src = fr.result;
           this.drawImages();
         });
 
         fr.readAsDataURL(file);
       }
-    }
+    },
   },
 };
 </script>
@@ -297,7 +347,7 @@ export default {
 <style scoped>
 #wp {
   filter: drop-shadow(0px 0px 10px #888);
-  background: #fff;
+  background: url("/images/74820679_p0.png") repeat;
   margin: 0px auto;
 }
 
